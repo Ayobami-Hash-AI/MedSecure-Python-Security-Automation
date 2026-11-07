@@ -2,7 +2,7 @@
 
 A lightweight, reproducible Python project for detecting suspicious SSH authentication patterns in **synthetic** security logs. Built as a practical exercise in Python automation, security detection engineering, Linux development, testing, and Git version control.
 
-> **Status:** Milestones 1–3 implemented. This is a learning prototype, not a production SIEM or real-time intrusion detection system.
+> **Status:** Milestones 1–4 implemented. This is a learning prototype, not a production SIEM or real-time intrusion detection system.
 
 ## What it does
 
@@ -21,13 +21,15 @@ A threshold alert is **not proof of an attack**. A human analyst must investigat
 ```text
 MedSecure-Python-Security-Automation/
 ├── src/
-│   └── monitor.py               # Log parsing and sliding-window detection
+│   ├── monitor.py               # Log parsing, detection, and reporting integration
+│   └── reporter.py              # JSON incident report generation
 ├── sample_logs/
 │   └── authentication.log       # Synthetic events for reproduction
 ├── tests/
-│   └── test_monitor.py          # Automated unittest scenarios
-├── docs/
-│   └── screenshots/             # Terminal evidence and milestone images
+│   ├── test_monitor.py          # Five detection tests
+│   └── test_reporter.py         # Four incident-report tests
+├── reports/
+│   └── .gitkeep                 # Generated JSON reports are ignored
 ├── .gitignore
 ├── LICENSE
 └── README.md
@@ -47,6 +49,8 @@ git clone https://github.com/Ayobami-Hash-AI/MedSecure-Python-Security-Automatio
 cd MedSecure-Python-Security-Automation
 python3 src/monitor.py
 ```
+
+When an alert is found, MedSecure also writes a JSON incident report under `reports/`. Generated `reports/*.json` files are excluded from version control; rerunning the monitor creates another report for the same sample activity.
 
 Expected detection for the committed synthetic sample:
 
@@ -69,7 +73,7 @@ Severity: HIGH
 python3 -m unittest discover -s tests -v
 ```
 
-Five test cases currently cover:
+Nine tests currently cover detection and incident reporting:
 
 | Scenario | Expected outcome |
 | --- | --- |
@@ -79,7 +83,9 @@ Five test cases currently cover:
 | Successful logins only | No alert |
 | Failures from five distinct IPs | No alert |
 
-**Observed milestone-3 result:** 5 tests passed in 0.015 seconds on the development machine. Runtime will vary.
+The four reporting tests verify file creation, expected JSON fields, zero reports for zero alerts, and separate files for multiple alerts.
+
+**Observed milestone-4 result:** 9 tests passed in 0.014 seconds on the development machine. Runtime will vary.
 
 ## Detection approach
 
@@ -96,7 +102,7 @@ The current parser expects records like:
 2026-11-06 10:01:12 Failed password for admin from 192.168.1.10
 ```
 
-It is **not** yet a parser for all native Linux `auth.log` / journald formats. The program runs on demand, not continuously. It does not block IPs, send notifications, or generate persistent incident reports.
+It is **not** yet a parser for all native Linux `auth.log` / journald formats. The program runs on demand, not continuously. It does not block IPs or send notifications. JSON incident reports are written locally, but the application does not yet deduplicate repeat detections.
 
 ## Development milestones
 
@@ -105,27 +111,16 @@ It is **not** yet a parser for all native Linux `auth.log` / journald formats. T
 | 1 — Initial detector | Count simulated failed logins and print an alert | Complete |
 | 2 — Time-based analysis | Read external log file; correlate failures within 60 seconds | Complete |
 | 3 — Testable detection engine | Reusable function, IPv4 validation, sliding window, five unit tests | Complete |
-| 4 — Incident reporting | Save structured JSON incident reports | Planned |
+| 4 — Incident reporting | Save structured JSON incident reports; four reporting unit tests | Complete |
 | 5 — Packaging and CI | Docker image and automated GitHub Actions tests | Planned |
-
-## Evidence screenshots
-
-Terminal screenshots are organized under `docs/screenshots/`. Suggested evidence filenames:
-
-- `02-time-window-detection.png` — file-based detector output.
-- `03-unit-tests-passing.png` — five passing unit tests.
-- `04-monitor-regression-check.png` — detector still working after refactoring.
-- `05-milestone-3-github-push.png` — version-control evidence.
-
-Screenshot files are tracked separately from the application source. Do not include sensitive information, real patient records, or production credentials in screenshots.
 
 ## Skills demonstrated
 
-**Python:** collections, functions, dictionaries, regular expressions, file I/O, timestamps, IP validation, and sliding-window algorithms.
+**Python:** collections, functions, dictionaries, regular expressions, file I/O, JSON serialization, UTC timestamps, UUID-based identifiers, IP validation, and sliding-window algorithms.
 
 **Security:** SSH authentication analysis, event correlation, detection thresholds, alert triage, and false-positive considerations.
 
-**Engineering:** Linux/WSL2 execution, Git/GitHub workflows, repeatable test fixtures, and regression tests.
+**Engineering:** Linux/WSL2 execution, Git/GitHub workflows, reusable modules, temporary-directory test isolation, repeatable test fixtures, and regression tests.
 
 ## Responsible use
 
