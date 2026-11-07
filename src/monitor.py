@@ -1,3 +1,4 @@
+from reporter import generate_incident_report
 from collections import defaultdict
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -89,12 +90,23 @@ def main():
     with open(LOG_FILE, "r", encoding="utf-8") as file:
         logs = file.readlines()
 
+    # Step 1: Detect suspicious authentication activity
     alerts = detect_brute_force(
         logs,
         threshold=THRESHOLD,
         window_seconds=TIME_WINDOW
     )
 
+    # Step 2: Generate incident reports
+    report_files = generate_incident_report(alerts)
+
+    if report_files:
+        print("\n===== INCIDENT REPORTS GENERATED =====")
+
+        for report_file in report_files:
+            print(f"Report saved: {report_file}")
+
+    # Step 3: Display detection results
     if not alerts:
         print("\nNo suspicious authentication activity detected.")
 
