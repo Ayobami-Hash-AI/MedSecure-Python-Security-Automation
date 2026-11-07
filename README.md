@@ -2,7 +2,9 @@
 
 A lightweight, reproducible Python project for detecting suspicious SSH authentication patterns in **synthetic** security logs. Built as a practical exercise in Python automation, security detection engineering, Linux development, testing, and Git version control.
 
-> **Status:** Milestones 1–4 implemented. This is a learning prototype, not a production SIEM or real-time intrusion detection system.
+[![MedSecure CI](https://github.com/Ayobami-Hash-AI/MedSecure-Python-Security-Automation/actions/workflows/ci.yml/badge.svg)](https://github.com/Ayobami-Hash-AI/MedSecure-Python-Security-Automation/actions/workflows/ci.yml)
+
+> **Status:** Milestones 1–5 complete (Docker and CI included). This is a learning prototype, not a production SIEM or real-time intrusion detection system.
 
 ## What it does
 
@@ -13,6 +15,8 @@ A lightweight, reproducible Python project for detecting suspicious SSH authenti
 - Uses a sliding 60-second window to flag **five or more failed attempts** from the same IP.
 - Prints a structured high-severity *possible SSH brute-force* alert with first/last observed timestamps.
 - Exposes detection logic as `detect_brute_force()` for reuse and testing.
+- Creates structured JSON incident reports with identifiers, timestamps, severity and investigation status.
+- Runs inside a non-root Docker container and validates changes with GitHub Actions.
 
 A threshold alert is **not proof of an attack**. A human analyst must investigate the context.
 
@@ -30,6 +34,9 @@ MedSecure-Python-Security-Automation/
 │   └── test_reporter.py         # Four incident-report tests
 ├── reports/
 │   └── .gitkeep                 # Generated JSON reports are ignored
+├── .github/workflows/ci.yml      # Automated tests, Docker build, container smoke test
+├── Dockerfile                   # Non-root Python container image
+├── .dockerignore                # Excluded Docker build context files
 ├── .gitignore
 ├── LICENSE
 └── README.md
@@ -39,8 +46,9 @@ MedSecure-Python-Security-Automation/
 
 - Python 3 (developed and tested with Python 3.14.4 on Ubuntu under WSL2)
 - Git (optional, for cloning)
+- Docker Desktop or Docker Engine (optional, for container execution)
 
-The application uses only Python's standard library. **Docker is not required yet**; containerization is planned for a later milestone.
+The application uses only Python's standard library; no third-party Python packages are required.
 
 ## Run locally
 
@@ -51,6 +59,27 @@ python3 src/monitor.py
 ```
 
 When an alert is found, MedSecure also writes a JSON incident report under `reports/`. Generated `reports/*.json` files are excluded from version control; rerunning the monitor creates another report for the same sample activity.
+
+## Run with Docker
+
+From the repository root:
+
+```bash
+docker build -t medsecure-monitor:1.0 .
+docker run --rm medsecure-monitor:1.0
+```
+
+To **retain generated JSON reports** after the container exits, use a bind mount:
+
+```bash
+mkdir -p reports
+docker run --rm \\
+  --mount type=bind,source="$(pwd)/reports",target=/app/reports \\
+  medsecure-monitor:1.0
+ls reports/
+```
+
+The bind-mount example uses Bash (Linux, macOS or WSL2). The container runs as UID 10001, so the host directory must be writable by that user. Generated reports are ignored by Git; do not commit sensitive incident data. Without a mount, reports disappear when the `--rm` container exits.
 
 Expected detection for the committed synthetic sample:
 
@@ -87,6 +116,10 @@ The four reporting tests verify file creation, expected JSON fields, zero report
 
 **Observed milestone-4 result:** 9 tests passed in 0.014 seconds on the development machine. Runtime will vary.
 
+## Continuous integration
+
+The workflow at `.github/workflows/ci.yml` runs on pushes and pull requests targeting `main`. It checks out the code, sets up Python 3.14, runs all nine `unittest` cases, builds the Docker image, and performs a container execution smoke test. A green workflow result indicates those configured checks passed; it is not a security audit or proof of production readiness.
+
 ## Detection approach
 
 1. Read log lines from the sample file.
@@ -112,7 +145,7 @@ It is **not** yet a parser for all native Linux `auth.log` / journald formats. T
 | 2 — Time-based analysis | Read external log file; correlate failures within 60 seconds | Complete |
 | 3 — Testable detection engine | Reusable function, IPv4 validation, sliding window, five unit tests | Complete |
 | 4 — Incident reporting | Save structured JSON incident reports; four reporting unit tests | Complete |
-| 5 — Packaging and CI | Docker image and automated GitHub Actions tests | Planned |
+| 5 — Packaging and CI | Docker image, persistent report bind mount, and GitHub Actions validation | Complete |
 
 ## Skills demonstrated
 
@@ -120,8 +153,15 @@ It is **not** yet a parser for all native Linux `auth.log` / journald formats. T
 
 **Security:** SSH authentication analysis, event correlation, detection thresholds, alert triage, and false-positive considerations.
 
-**Engineering:** Linux/WSL2 execution, Git/GitHub workflows, reusable modules, temporary-directory test isolation, repeatable test fixtures, and regression tests.
+**Engineering:** Linux/WSL2 execution, Git/GitHub workflows, reusable modules, temporary-directory test isolation, Docker images and bind mounts, non-root execution, GitHub Actions CI, repeatable test fixtures, and regression tests.
 
 ## Responsible use
 
 All committed authentication events are synthetic and intended for defensive education and reproducible testing. No real healthcare or patient data is used.
+
+## Next steps
+
+- Continuous monitoring of appended authentication events.
+- Deduplication and alert suppression to reduce repeated incident reports.
+- Better parsing, configuration, logging and error handling.
+- Additional security tests and container hardening.
