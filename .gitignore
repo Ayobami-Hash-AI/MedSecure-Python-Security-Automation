@@ -219,3 +219,20 @@ __marimo__/
 # Streamlit
 .streamlit/secrets.toml
 reports/*.json
+
+# Do not commit local secrets, environment variants, or cryptographic keys.
+.env.*
+!.env.example
+!.env.sample
+!.env.template
+.secrets/
+secrets/
+*.pem
+*.key
+*.p12
+*.pfx
+*.jks
+id_rsa
+id_ed25519
+*.tfstate
+*.tfstate.*
