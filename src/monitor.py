@@ -1,39 +1,65 @@
-from collections import Counter
+from collections import defaultdict
+from datetime import datetime, timedelta
+from pathlib import Path
 import re
 
-# Simulated hospital server authentication logs
-logs = [
-    "Failed password for admin from 192.168.1.10",
-    "Failed password for root from 192.168.1.10",
-    "Failed password for admin from 192.168.1.10",
-    "Accepted password for john from 192.168.1.20",
-    "Failed password for root from 192.168.1.10",
-    "Failed password for admin from 192.168.1.10",
-]
+# Security detection configuration
+THRESHOLD = 5
+TIME_WINDOW = timedelta(seconds=60)
 
-failed_ips = []
+# Locate the authentication log
+BASE_DIR = Path(__file__).resolve().parent.parent
+LOG_FILE = BASE_DIR / "sample_logs" / "authentication.log"
 
-# Analyze each authentication event
-for log in logs:
-    if "Failed password" in log:
-        match = re.search(r"from (\d+\.\d+\.\d+\.\d+)", log)
+# Store failed authentication attempts by IP
+failed_attempts = defaultdict(list)
 
-        if match:
-            failed_ips.append(match.group(1))
-
-# Count failed login attempts
-attempts = Counter(failed_ips)
+# Define the expected log format
+pattern = re.compile(
+    r"^(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}) "
+    r"Failed password for \S+ from "
+    r"(\d{1,3}(?:\.\d{1,3}){3})$"
+)
 
 print("\n===== MEDSECURE SECURITY MONITOR =====")
 
-for ip, count in attempts.items():
-    print(f"\nSource IP: {ip}")
-    print(f"Failed Login Attempts: {count}")
+# Read and process authentication logs
+with open(LOG_FILE, "r", encoding="utf-8") as file:
+    for line in file:
 
-    if count >= 5:
-        print("ALERT: Possible SSH Brute-Force Attack!")
-        print("Severity: HIGH")
-    else:
-        print("Status: Monitoring")
+        match = pattern.search(line.strip())
+
+        if match:
+            timestamp = datetime.strptime(
+                match.group(1),
+                "%Y-%m-%d %H:%M:%S"
+            )
+
+            ip_address = match.group(2)
+
+            failed_attempts[ip_address].append(timestamp)
+
+# Analyze failed attempts within a time window
+for ip, timestamps in failed_attempts.items():
+
+    timestamps.sort()
+
+    for index, start_time in enumerate(timestamps):
+
+        attempts_in_window = [
+            timestamp
+            for timestamp in timestamps[index:]
+            if timestamp - start_time <= TIME_WINDOW
+        ]
+
+        if len(attempts_in_window) >= THRESHOLD:
+
+            print("\n[ALERT] Possible SSH Brute-Force Attack")
+            print(f"Source IP: {ip}")
+            print(f"Failed Attempts: {len(attempts_in_window)}")
+            print(f"Time Window: {TIME_WINDOW.total_seconds()} seconds")
+            print("Severity: HIGH")
+
+            break
 
 print("\n===== ANALYSIS COMPLETED =====")
