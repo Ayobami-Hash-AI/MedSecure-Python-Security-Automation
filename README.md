@@ -4,7 +4,7 @@ A lightweight, reproducible Python project for detecting suspicious SSH authenti
 
 [![MedSecure CI](https://github.com/Ayobami-Hash-AI/MedSecure-Python-Security-Automation/actions/workflows/ci.yml/badge.svg)](https://github.com/Ayobami-Hash-AI/MedSecure-Python-Security-Automation/actions/workflows/ci.yml)
 
-> **Status:** Milestones 1–5 complete (Docker and CI included). This is a learning prototype, not a production SIEM or real-time intrusion detection system.
+> **Status:** Milestones 1–5 and 6A complete (prototype continuous log following). Real-time brute-force correlation is planned for 6B. This is not a production SIEM.
 
 ## What it does
 
@@ -25,6 +25,7 @@ A threshold alert is **not proof of an attack**. A human analyst must investigat
 ```text
 MedSecure-Python-Security-Automation/
 ├── src/
+│   ├── live_monitor.py          # Follow newly appended synthetic events
 │   ├── monitor.py               # Log parsing, detection, and reporting integration
 │   └── reporter.py              # JSON incident report generation
 ├── sample_logs/
@@ -135,7 +136,7 @@ The current parser expects records like:
 2026-11-06 10:01:12 Failed password for admin from 192.168.1.10
 ```
 
-It is **not** yet a parser for all native Linux `auth.log` / journald formats. The program runs on demand, not continuously. It does not block IPs or send notifications. JSON incident reports are written locally, but the application does not yet deduplicate repeat detections.
+It is **not** yet a parser for all native Linux `auth.log` / journald formats. The batch detector runs on demand. A separate experimental live follower displays newly appended events but does not yet correlate or alert on attacks. It does not block IPs or send notifications. JSON incident reports are written locally, but the application does not yet deduplicate repeat detections.
 
 ## Development milestones
 
@@ -146,6 +147,8 @@ It is **not** yet a parser for all native Linux `auth.log` / journald formats. T
 | 3 — Testable detection engine | Reusable function, IPv4 validation, sliding window, five unit tests | Complete |
 | 4 — Incident reporting | Save structured JSON incident reports; four reporting unit tests | Complete |
 | 5 — Packaging and CI | Docker image, persistent report bind mount, and GitHub Actions validation | Complete |
+| 6A — Live event following | Follow appended synthetic log entries in WSL; manual test successful | Complete (prototype) |
+| 6B — Live detection | Integrate sliding-window brute-force detection and reporting | Planned |
 
 ## Skills demonstrated
 
@@ -159,9 +162,26 @@ It is **not** yet a parser for all native Linux `auth.log` / journald formats. T
 
 All committed authentication events are synthetic and intended for defensive education and reproducible testing. No real healthcare or patient data is used.
 
+## Milestone 6A: Run the live follower
+
+Create a disposable test file and start the follower in one terminal:
+
+```bash
+touch sample_logs/live_test.log
+python3 src/live_monitor.py
+```
+
+In another terminal, append a synthetic event:
+
+```bash
+printf '%s Failed password for admin from 192.168.1.100\n' "$(date '+%Y-%m-%d %H:%M:%S')" >> sample_logs/live_test.log
+```
+
+The first terminal should display `[NEW EVENT] ...`. This was manually verified on Ubuntu WSL; automated coverage and Windows-native concurrent-write behavior are not yet verified. The follower does not yet handle log rotation, truncation, or real-time brute-force detection.
+
 ## Next steps
 
-- Continuous monitoring of appended authentication events.
+- Integrate continuous monitoring with the detection engine (6B).
 - Deduplication and alert suppression to reduce repeated incident reports.
 - Better parsing, configuration, logging and error handling.
 - Additional security tests and container hardening.
